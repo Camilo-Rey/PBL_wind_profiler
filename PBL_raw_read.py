@@ -6,8 +6,6 @@
 # ### Dec 27, 2019
 # #### This code 1) downloads a selected subset of the raw data of the NOAA wind profiler from the NOAA ftp server and stores it in the local machine. 2) Selects and process the SNR values for calculation of PBL code in the next code
 
-# In[1]:
-
 
 # Import libraries
 
@@ -17,8 +15,6 @@ import numpy as np
 import ftplib
 import io
 import time
-
-# In[2]:
 
 
 # Parameters input
@@ -31,15 +27,12 @@ ang=66.4 # inclination angle from horizon of non-vertical channels. If alredy co
 offset=-8 # offset from UTC
 
 
-# In[3]:
-
 # Dowload data from NOAA and store it in current working directory
 
 ftp = ftplib.FTP("ftp1.esrl.noaa.gov")
 ftp.login()
 
 base = '/psd2/data/realtime//Radar915/WwWind/tci/'
-
 
 def download(folder):
     
@@ -82,7 +75,6 @@ print(f'Time without skipping already downloaded files (2017): {t_final-t_init}'
 maindir=os.path.join(currdir, yr)
 ndays=len(os.listdir(maindir))
 
-# In[5]:
 
 # Work on the examples later
 
@@ -91,15 +83,11 @@ ndays=len(os.listdir(maindir))
 #X1.head(5)
 
 
-# In[6]:
-
 
 ## Coarse Resolution data example
 #X1= pd.read_csv(r'D:\PBL\Raw\2018\003\tci18003.00w',sep='\s+',skiprows=66)
 #X1.head(5)
 
-
-# In[ ]:
 
 # New version!!!
 
@@ -128,6 +116,7 @@ for i in  np.arange(24):
         hrs.append('0'+str(i))
     else:
         hrs.append(str(i))        
+
 
 for fileD in days:
         print(fileD)
@@ -181,43 +170,43 @@ print(ALL_fine,ALL_fine.shape)
 len(doyall)
 
 
-
-# In[114]:
-
-
 # Define date and time variables (not sure this is the best way to do it)
-import datetime as dt
+# Note: The calculations for time_fine and time_coarse could have been 
+# performed in the same loop as ALL_fine and ALL_coarse, they are separated
+# for now just to make it easier to debug.
+
+from datetime import datetime,timedelta
 
 time_fine=[]
-yearF=?
-monthF=?
-dayF=?
-hourF=?
 
-for i in range(44*24*365):    
-    t1=dt.datetime(yearF[i],monthF[i],dayF[i],hourF[i])
-    time_fine.append(t1)
+date_0 = datetime(2018,1,1,0,0)
 
+
+for day in days:
+    date_1 = date_0+timedelta(int(day)-1)
     
+    for hr in hrs:
+        date_2 = date_1 + timedelta(0,3600*int(hr))
+        
+        for imin in range(44):
+            date = date_2 + timedelta(0,60*imin*(60/44))
+            time_fine.append(date)
+#            print(date.isoformat()) # To check values as generated
+        
+
 time_coarse=[]
-yearG=?
-monthG=?
-dayG=?
-hourG=?
 
-for i in range(44*24*365):    
-    t2=dt.datetime(yearG[i],monthG[i],dayG[i],hourG[i])
-    time_coarse.append(t2)
+for day in days:
+    date_1 = date_0+timedelta(int(day)-1)
     
-
-# In[ ]:
-
-
-
-
-
-# In[116]:
-
+    for hr in hrs:
+        date_2 = date_1 + timedelta(0,3600*int(hr))
+        
+        for imin in range(62):
+            date = date_2 + timedelta(0,60*imin*(60/62))
+            time_coarse.append(date)
+#            print(date.isoformat()) # To check values as generated
+        
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -238,8 +227,6 @@ plt.xlabel('month')
 plt.show()
 
 
-# In[ ]:
-
 
 # Extracting Signal-to-Noise ratio data (SNR) and others, and correcting heigths
 
@@ -254,7 +241,6 @@ snr2c=np.interp(h2,snr2a,h);# interpolate the corrected values to the height of 
 snr3c=np.interp(h2,snr3a,h);# interpolate the corrected values to the height of the vertical
 
 
-# In[118]:
 
 
 # Offset the time series to local time
