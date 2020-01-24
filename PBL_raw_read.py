@@ -208,49 +208,51 @@ for day in days:
 #            print(date.isoformat()) # To check values as generated
         
 
-import matplotlib
-import matplotlib.pyplot as plt
-timenum=matplotlib.dates.date2num(timeall)
-timenum[1:10]
-len(doyall)
-fig, ax = plt.subplots()
-ax.plot(timenum,doyall)
-
-
-import matplotlib.dates as mdates
-myFmt = mdates.DateFormatter('%m')
-ax.xaxis.set_major_formatter(myFmt)
-
-plt.ylabel('DOY')
-plt.xlabel('month')
-
-plt.show()
-
-
-
-# Extracting Signal-to-Noise ratio data (SNR) and others, and correcting heigths
-
-snr1a=ALL_fine[:,11];snr1a[snr1a==999999]=None
-snr2a=ALL_fine[:,12];snr2a[snr2a==999999]=None
-snr3a=ALL_fine[:,13];snr3a[snr3a==999999]=None
-
-h=ALL_fine[:,1];h[h==999999]=None
-
-h2=h*np.sin(ang*np.pi/180);# Corrected height for the oblique channels
-snr2c=np.interp(h2,snr2a,h);# interpolate the corrected values to the height of the vertical
-snr3c=np.interp(h2,snr3a,h);# interpolate the corrected values to the height of the vertical
-
-
-
-
-# Offset the time series to local time
-
-ltt=len(doyall)
-offs=-offset
-snr=np.concatenate((snr1a.reshape(-1,1),snr3c.reshape(-1,1)),axis=1)
-snr=np.concatenate((snr,snr3c.reshape(-1,1)),axis=1)
-snr.shape
-#snr1=np.empty((len(snr1a),1),dtype=float);
-#snr1[-1]
-# snr[offs:-1,1]=snr[1:ltt-offs] #offset snr is in UTC
+# Note: This part is commented out for testing purposes
+#import matplotlib
+#import matplotlib.pyplot as plt
+#
+#timenum=matplotlib.dates.date2num(timeall)
+#timenum[1:10]
+#len(doyall)
+#fig, ax = plt.subplots()
+#ax.plot(timenum,doyall)
+#
+#
+#import matplotlib.dates as mdates
+#myFmt = mdates.DateFormatter('%m')
+#ax.xaxis.set_major_formatter(myFmt)
+#
+#plt.ylabel('DOY')
+#plt.xlabel('month')
+#
+#plt.show()
+#
+#
+#
+## Extracting Signal-to-Noise ratio data (SNR) and others, and correcting heigths
+#
+#snr1a=ALL_fine[:,11];snr1a[snr1a==999999]=None
+#snr2a=ALL_fine[:,12];snr2a[snr2a==999999]=None
+#snr3a=ALL_fine[:,13];snr3a[snr3a==999999]=None
+#
+#h=ALL_fine[:,1];h[h==999999]=None
+#
+#h2=h*np.sin(ang*np.pi/180);# Corrected height for the oblique channels
+#snr2c=np.interp(h2,snr2a,h);# interpolate the corrected values to the height of the vertical
+#snr3c=np.interp(h2,snr3a,h);# interpolate the corrected values to the height of the vertical
+#
+#
+#
+#
+## Offset the time series to local time
+#
+#ltt=len(doyall)
+#offs=-offset
+#snr=np.concatenate((snr1a.reshape(-1,1),snr3c.reshape(-1,1)),axis=1)
+#snr=np.concatenate((snr,snr3c.reshape(-1,1)),axis=1)
+#snr.shape
+##snr1=np.empty((len(snr1a),1),dtype=float);
+##snr1[-1]
+## snr[offs:-1,1]=snr[1:ltt-offs] #offset snr is in UTC
 
