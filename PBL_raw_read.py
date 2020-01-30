@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Download, read, and process raw data of NOAA wind profiler
+# # Read, and process raw data of NOAA wind profiler
 # ## By Camilo Rey and Vinnie Ribeiro
 # ### Dec 27, 2019
-# #### This code 1) downloads a selected subset of the raw data of the NOAA wind profiler from the NOAA ftp server and stores it in the local machine. 2) Selects and process the SNR values for calculation of PBL code in the next code
+# #### This code  Selects and process the SNR values for calculation of PBL code in the next code
 
 
 # Import libraries
@@ -22,74 +22,25 @@ import time
 year=2017
 yr=str(year)
 
-ndays=365
 ang=66.4 # inclination angle from horizon of non-vertical channels. If alredy corrected, ang=90
 offset=-8 # offset from UTC
 
+## Where is the data?
 
-# Dowload data from NOAA and store it in current working directory
-
-ftp = ftplib.FTP("ftp1.esrl.noaa.gov")
-ftp.login()
-
-base = '/psd2/data/realtime//Radar915/WwWind/tci/'
-
-def download(folder):
-    
-    files = os.listdir(folder[len(base)::])
-    for file in ftp.nlst(folder):
-        if file not in files:
-
-            r = io.BytesIO()
-            ftp.retrbinary('RETR ' + file , r.write)
-            data = r.getvalue()
-
-            path = os.path.join(os.getcwd(),folder[len(base)::])
-
-            file_name = file[len(folder)+1::]
-            with open(os.path.join(path,file_name),'wb') as f:
-                f.write(data)
-
-            r.close()
-        else:
-            pass
-
-
-t_init = time.time()
-
-path = os.path.join(base,str(year))
-
-for path0 in ftp.nlst(path):
-    try:
-        os.makedirs(path0[len(base)::])
-    except FileExistsError:
-        pass
-#     print(os.listdir(path0[len(base)::]))
-#     print(path0)
-    download(path0)
-    currdir=os.getcwd()
-
-t_final = time.time()
-print(f'Time without skipping already downloaded files (2017): {t_final-t_init}')
-
+currdir=os.getcwd() # or other directory where data is located 
 maindir=os.path.join(currdir, yr)
-ndays=len(os.listdir(maindir))
 
 
-# Work on the examples later
+# Fine Resolution data example
+X1= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=10,nrows=44)
+X1.head(5)
 
-## Fine Resolution data example
-#X1= pd.read_csv(os.path.join(maindir, ),sep='\s+',skiprows=10,nrows=44)
-#X1.head(5)
-
-
-
-## Coarse Resolution data example
-#X1= pd.read_csv(r'D:\PBL\Raw\2018\003\tci18003.00w',sep='\s+',skiprows=66)
-#X1.head(5)
+# Coarse Resolution data example
+X2= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=66)
+X2.head(5)
 
 
-# New version!!!
+## Preallocate
 
 ALL_fine=np.empty((44*24*365,16),dtype=float);ALL_fine[:]=np.nan
 ALL_coarse=np.empty((62*24*365,16),dtype=float);ALL_coarse[:]=np.nan
@@ -102,6 +53,7 @@ doyall_coarse=[]
 d=0
 days = []
 
+# days in a year
 for i in  np.arange(1,366):
     if len(str(i))==1:
         days.append('00'+str(i))
@@ -110,6 +62,7 @@ for i in  np.arange(1,366):
     else:
         days.append(str(i))
 
+# hours in a day
 hrs = []
 for i in  np.arange(24):
     if len(str(i))==1:
@@ -117,6 +70,7 @@ for i in  np.arange(24):
     else:
         hrs.append(str(i))        
 
+## Populate arrays
 
 for fileD in days:
         print(fileD)
@@ -179,7 +133,7 @@ from datetime import datetime,timedelta
 
 time_fine=[]
 
-date_0 = datetime(2018,1,1,0,0)
+date_0 = datetime(year,1,1,0,0)
 
 
 for day in days:
