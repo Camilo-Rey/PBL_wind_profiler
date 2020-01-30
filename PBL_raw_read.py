@@ -12,14 +12,14 @@
 import pandas as pd
 import os
 import numpy as np
-import ftplib
-import io
-import time
-
+#import ftplib
+#import io
+#import time
+import matplotlib.pyplot as plt
 
 # Parameters input
 
-year=2017
+year=2018
 yr=str(year)
 
 ang=66.4 # inclination angle from horizon of non-vertical channels. If alredy corrected, ang=90
@@ -31,13 +31,13 @@ currdir=os.getcwd() # or other directory where data is located
 maindir=os.path.join(currdir, yr)
 
 
-# Fine Resolution data example
-X1= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=10,nrows=44)
-X1.head(5)
-
-# Coarse Resolution data example
-X2= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=66)
-X2.head(5)
+## Fine Resolution data example
+#X1= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=10,nrows=44)
+#X1.head(5)
+#
+## Coarse Resolution data example
+#X2= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=66)
+#X2.head(5)
 
 
 ## Preallocate
@@ -73,7 +73,7 @@ for i in  np.arange(24):
 ## Populate arrays
 
 for fileD in days:
-        print(fileD)
+#        print(fileD)
         doy=int(fileD)
         direc=os.path.join(maindir, fileD)
         # Pre-allocate 
@@ -90,7 +90,7 @@ for fileD in days:
             fname = None
             
         if fname is not None:
-            print('working on file', fname)
+#            print('working on file', fname)
             for hr in hrs:
                 fileH = fname[0:9]+str(hr)+'w'
                 
@@ -108,8 +108,8 @@ for fileD in days:
                     dayc[c*62:c*62+62]= pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=66,nrows=62)
                 
                 except:
-                    day[c*44:c*44+44] = None
-                    dayc[c*62:c*62+62]= None
+                    day[c*44:c*44+44] = np.nan
+                    dayc[c*62:c*62+62]= np.nan
     
                 c+=1
 
@@ -143,23 +143,43 @@ for day in days:
         date_2 = date_1 + timedelta(0,3600*int(hr))
         
         for imin in range(44):
-            date = date_2 + timedelta(0,60*imin*(60/44))
-            time_fine.append(date)
-#            print(date.isoformat()) # To check values as generated
+#            date = date_2 + timedelta(0,60*imin*(60/44))
+            time_fine.append(date_2)
+            
+#            print(date_2.isoformat()) # To check values as generated
         
-
-time_coarse=[]
-
-for day in days:
-    date_1 = date_0+timedelta(int(day)-1)
-    
-    for hr in hrs:
-        date_2 = date_1 + timedelta(0,3600*int(hr))
         
-        for imin in range(62):
-            date = date_2 + timedelta(0,60*imin*(60/62))
-            time_coarse.append(date)
-#            print(date.isoformat()) # To check values as generated
+        
+# Plotting the first 10 hours of the second variable at the minimum height.
+plt.figure()
+plt.plot(time_fine[0:440:44],ALL_fine[0:440:44,1])
+plt.show()
+
+
+# Setting the 999999 as zeros (I assume are corrupted readings)  
+ALL_fine[ALL_fine==999999]=0
+
+# Plot for all times
+plt.figure()
+plt.plot(time_fine[0::44],ALL_fine[0::44,1])
+plt.show()
+     
+
+
+#plt.plot()
+#
+#time_coarse=[]
+#
+#for day in days:
+#    date_1 = date_0+timedelta(int(day)-1)
+#    
+#    for hr in hrs:
+#        date_2 = date_1 + timedelta(0,3600*int(hr))
+#        
+#        for imin in range(62):
+#            date = date_2 + timedelta(0,60*imin*(60/62))
+#            time_coarse.append(date)
+##            print(date.isoformat()) # To check values as generated
         
 
 # Note: This part is commented out for testing purposes
