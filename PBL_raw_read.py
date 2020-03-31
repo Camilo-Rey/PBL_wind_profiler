@@ -12,10 +12,8 @@
 import pandas as pd
 import os
 import numpy as np
-#import ftplib
-#import io
-#import time
 import matplotlib.pyplot as plt
+from scipy import signal
 
 # Parameters input
 
@@ -36,24 +34,42 @@ maindir=os.path.join(currdir, yr)
 #X1.head(5)
 #
 ## Coarse Resolution data example
-#X2= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=66)
+#X2= pd.read_csv(os.path.join(maindir, '300\\tci17300.04w'),sep='\s+',skiprows=66,nrows=62)
 #X2.head(5)
 
 
 ## Preallocate
 
-ALL_fine=np.empty((44*24*365,16),dtype=float);ALL_fine[:]=np.nan
-ALL_coarse=np.empty((62*24*365,16),dtype=float);ALL_coarse[:]=np.nan
+res=1 # 0 for fine, 1 for coarse
+if res==0:
+    ng=44
+    skp=10
+if res==1:
+    ng=62
+    skp=66
+    
 
-hrall_fine=[]
-doyall=[]
-hrall_coarse=[]
-doyall_coarse=[]
+Ndays=365
 
-d=0
-days = []
+h=np.empty((Ndays*24,ng),dtype=float);h[:]=np.nan
+windspeed=np.empty((Ndays*24,ng),dtype=float);windspeed[:]=np.nan
+
+
+snr1a=np.empty((Ndays*24,ng),dtype=float);snr1a[:]=np.nan
+snr2a=np.empty((Ndays*24,ng),dtype=float);snr2a[:]=np.nan
+snr3a=np.empty((Ndays*24,ng),dtype=float);snr3a[:]=np.nan
+
+snr1s=np.empty((Ndays*24,ng),dtype=float);snr1s[:]=np.nan
+snr2s=np.empty((Ndays*24,ng),dtype=float);snr2s[:]=np.nan
+snr3s=np.empty((Ndays*24,ng),dtype=float);snr3s[:]=np.nan
+
+snr2c=np.empty((Ndays*24,ng),dtype=float);snr2c[:]=np.nan
+snr3c=np.empty((Ndays*24,ng),dtype=float);snr3c[:]=np.nan   
+
+## Create time vector
 
 # days in a year
+days = []
 for i in  np.arange(1,366):
     if len(str(i))==1:
         days.append('00'+str(i))
@@ -68,165 +84,108 @@ for i in  np.arange(24):
     if len(str(i))==1:
         hrs.append('0'+str(i))
     else:
-        hrs.append(str(i))        
+        hrs.append(str(i))  
+        
+# Populate time        
+from datetime import datetime,timedelta
+
+time=[]
+date_0 = datetime(year,1,1,0,0)
+for day in days:
+    date_1 = date_0+timedelta(int(day)-1)
+    
+    for hr in hrs:
+        date_2 = date_1 + timedelta(0,3600*int(hr))
+        time.append(date_2)
 
 ## Populate arrays
 
+d=0
 for fileD in days:
-#        print(fileD)
+
         doy=int(fileD)
         direc=os.path.join(maindir, fileD)
-        # Pre-allocate 
-
-        day=np.empty((44*24,16),dtype=float)
-        dayc=np.empty((62*24,16),dtype=float)
 
         c=0            
+        
         # Iterate through hours in a day
-
         try:
             fname = os.listdir(direc)[0]
         except:
             fname = None
             
         if fname is not None:
-#            print('working on file', fname)
+            print('working on file', fname)
             for hr in hrs:
                 fileH = fname[0:9]+str(hr)+'w'
                 
-                for i in range(44):
-                    hrall_fine.append(int(hr))
-                    doyall.append(doy)                 
-
-                for i in range(62):
-                    hrall_coarse.append(int(hr))
-                    doyall_coarse.append(doy)
-
                 try:
-                    # Fine Resolution dataset
-                    day[c*44:c*44+44]= pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=10,nrows=44)
-                    dayc[c*62:c*62+62]= pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=66,nrows=62)
-                
-                except:
-                    day[c*44:c*44+44] = np.nan
-                    dayc[c*62:c*62+62]= np.nan
-    
-                c+=1
+                    tabday= pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=skp,nrows=ng)
+                    h[d*24+c,:]=tabday['HT']
+                    h2=h[d*24+c,:]*np.sin(ang*np.pi/180);h2=h2[...,None]# Corrected height for the oblique channels
+                    windspeed[d*24+c,:]=tabday['SPD'].to_numpy(dtype='float', na_value=np.nan); windspeed[windspeed==999999]=np.nan                     
+                    s1=tabday['SNR'].to_numpy(dtype='float', na_value=np.nan);s1[s1==999999]=np.nan
+                    s2=tabday['SNR.1'].to_numpy(dtype='float', na_value=np.nan);s2[s2==999999]=np.nan
+                    s3=tabday['SNR.2'].to_numpy(dtype='float', na_value=np.nan);s3[s3==999999]=np.nan
+                    # Smoothing and heigth correcting:
+                    if sum(~np.isnan(s1))>10:
+                        ss1=signal.savgol_filter(s1[~np.isnan(s1)],11,9)
+                        snr1s[d*24+c,~np.isnan(s1)]=ss1                        
+                    if sum(~np.isnan(s2))>10:
+                        ss2=signal.savgol_filter(s2[~np.isnan(s2)],11,9)
+                        snr2s[d*24+c,~np.isnan(s2)]=ss2
+                        snr2c[d*24+c,~np.isnan(s2)]=np.interp(h2[~np.isnan(s2),0],h[0,~np.isnan(s2)],ss2);
+                    if sum(~np.isnan(s3))>10:
+                        ss3=signal.savgol_filter(s3[~np.isnan(s3)],11,9) 
+                        snr3s[d*24+c,~np.isnan(s3)]=ss3                   
+                        snr3c[d*24+c,~np.isnan(s3)]=np.interp(h2[~np.isnan(s3),0],h[0,~np.isnan(s3)],ss3);
+                except: 
+                    h[d*24+c,:]=np.nan
+                    windspeed[d*24+c,:]=np.nan  
+                    s1=np.empty((1,ng),dtype=float);s1[:]=np.nan
+                    s2=np.empty((1,ng),dtype=float);s2[:]=np.nan
+                    s3=np.empty((1,ng),dtype=float);s3[:]=np.nan
+                    
+                # Raw series    
+                snr1a[d*24+c,:]=s1
+                snr2a[d*24+c,:]=s2
+                snr3a[d*24+c,:]=s3                 
 
-        
-        ALL_fine[d*1056:d*1056+1056]=day
-        ALL_coarse[d*1488:d*1488+1488]=dayc
+  
+                c+=1
         d+=1
 
-
-print(day,day.shape)  
-print(ALL_fine,ALL_fine.shape)
-len(doyall)
-
-
-# Define date and time variables (not sure this is the best way to do it)
-# Note: The calculations for time_fine and time_coarse could have been 
-# performed in the same loop as ALL_fine and ALL_coarse, they are separated
-# for now just to make it easier to debug.
-
-from datetime import datetime,timedelta
-
-time_fine=[]
-
-date_0 = datetime(year,1,1,0,0)
-
-
-for day in days:
-    date_1 = date_0+timedelta(int(day)-1)
-    
-    for hr in hrs:
-        date_2 = date_1 + timedelta(0,3600*int(hr))
-        
-        for imin in range(44):
-#            date = date_2 + timedelta(0,60*imin*(60/44))
-            time_fine.append(date_2)
-            
-#            print(date_2.isoformat()) # To check values as generated
-        
-        
-        
-# Plotting the first 10 hours of the second variable at the minimum height.
-plt.figure()
-plt.plot(time_fine[0:440:44],ALL_fine[0:440:44,1])
-plt.show()
-
-
-# Setting the 999999 as zeros (I assume are corrupted readings)  
-ALL_fine[ALL_fine==999999]=0
-
-# Plot for all times
-plt.figure()
-plt.plot(time_fine[0::44],ALL_fine[0::44,1])
-plt.show()
      
 
+# Sanity check: Plotting the wind speed at the minimum height along time
+plt.figure()
+plt.plot(time,windspeed[:,5])
+plt.xlabel('time')
+plt.ylabel('wind_speed (m/s)')
+plt.show()
 
-#plt.plot()
-#
-#time_coarse=[]
-#
-#for day in days:
-#    date_1 = date_0+timedelta(int(day)-1)
-#    
-#    for hr in hrs:
-#        date_2 = date_1 + timedelta(0,3600*int(hr))
-#        
-#        for imin in range(62):
-#            date = date_2 + timedelta(0,60*imin*(60/62))
-#            time_coarse.append(date)
-##            print(date.isoformat()) # To check values as generated
-        
-
-# Note: This part is commented out for testing purposes
-#import matplotlib
-#import matplotlib.pyplot as plt
-#
-#timenum=matplotlib.dates.date2num(timeall)
-#timenum[1:10]
-#len(doyall)
-#fig, ax = plt.subplots()
-#ax.plot(timenum,doyall)
-#
-#
-#import matplotlib.dates as mdates
-#myFmt = mdates.DateFormatter('%m')
-#ax.xaxis.set_major_formatter(myFmt)
-#
-#plt.ylabel('DOY')
-#plt.xlabel('month')
-#
-#plt.show()
-#
-#
-#
-## Extracting Signal-to-Noise ratio data (SNR) and others, and correcting heigths
-#
-#snr1a=ALL_fine[:,11];snr1a[snr1a==999999]=None
-#snr2a=ALL_fine[:,12];snr2a[snr2a==999999]=None
-#snr3a=ALL_fine[:,13];snr3a[snr3a==999999]=None
-#
-#h=ALL_fine[:,1];h[h==999999]=None
-#
-#h2=h*np.sin(ang*np.pi/180);# Corrected height for the oblique channels
-#snr2c=np.interp(h2,snr2a,h);# interpolate the corrected values to the height of the vertical
-#snr3c=np.interp(h2,snr3a,h);# interpolate the corrected values to the height of the vertical
-#
-#
-#
-#
+# Sanity check: Plotting the smoothed time series
+plt.figure()
+plt.plot(snr1s[4380,:],tabday['HT'],'.')
+plt.plot(snr1s[4380,:],tabday['HT'])
+plt.xlabel('SNR (dB)')
+plt.ylabel('heigth(m)')
+plt.show()
+h=tabday['HT']
 ## Offset the time series to local time
-#
-#ltt=len(doyall)
-#offs=-offset
-#snr=np.concatenate((snr1a.reshape(-1,1),snr3c.reshape(-1,1)),axis=1)
-#snr=np.concatenate((snr,snr3c.reshape(-1,1)),axis=1)
-#snr.shape
-##snr1=np.empty((len(snr1a),1),dtype=float);
-##snr1[-1]
-## snr[offs:-1,1]=snr[1:ltt-offs] #offset snr is in UTC
+
+offs=-offset
+
+snr1=np.empty((Ndays*24,ng),dtype=float);snr1[:]=np.nan
+snr2=np.empty((Ndays*24,ng),dtype=float);snr2[:]=np.nan
+snr3=np.empty((Ndays*24,ng),dtype=float);snr3[:]=np.nan
+ws=np.empty((Ndays*24,ng),dtype=float);ws[:]=np.nan
+
+snr1[0:-offs]=snr1s[offs-1:-1,:];
+snr2[0:-offs]=snr2c[offs-1:-1,:];
+snr3[0:-offs]=snr3c[offs-1:-1,:];
+
+np.savez('snr_coarse_new',snr1, snr2, snr3,h,time,)
+np.save('timef',time)
+
 
