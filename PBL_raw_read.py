@@ -14,6 +14,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import signal
+import pytz
+
 
 # Parameters input
 
@@ -90,7 +92,7 @@ for i in  np.arange(24):
 from datetime import datetime,timedelta
 
 time=[]
-date_0 = datetime(year,1,1,0,0)
+date_0 = datetime(2018,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
 for day in days:
     date_1 = date_0+timedelta(int(day)-1)
     
@@ -102,57 +104,54 @@ for day in days:
 
 d=0
 for fileD in days:
-
-        doy=int(fileD)
-        direc=os.path.join(maindir, fileD)
-
-        c=0            
-        
-        # Iterate through hours in a day
-        try:
-            fname = os.listdir(direc)[0]
-        except:
-            fname = None
+    doy=int(fileD)
+    direc=os.path.join(maindir, fileD)
+    c=0
+    
+    # Iterate through hours in a day
+    try:
+        fname = os.listdir(direc)[0]
+    except:
+        fname = None
             
-        if fname is not None:
-            print('working on file', fname)
-            for hr in hrs:
-                fileH = fname[0:9]+str(hr)+'w'
-                
-                try:
-                    tabday= pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=skp,nrows=ng)
-                    h[d*24+c,:]=tabday['HT']
-                    h2=h[d*24+c,:]*np.sin(ang*np.pi/180);h2=h2[...,None]# Corrected height for the oblique channels
-                    windspeed[d*24+c,:]=tabday['SPD'].to_numpy(dtype='float', na_value=np.nan); windspeed[windspeed==999999]=np.nan                     
-                    s1=tabday['SNR'].to_numpy(dtype='float', na_value=np.nan);s1[s1==999999]=np.nan
-                    s2=tabday['SNR.1'].to_numpy(dtype='float', na_value=np.nan);s2[s2==999999]=np.nan
-                    s3=tabday['SNR.2'].to_numpy(dtype='float', na_value=np.nan);s3[s3==999999]=np.nan
-                    # Smoothing and heigth correcting:
-                    if sum(~np.isnan(s1))>10:
-                        ss1=signal.savgol_filter(s1[~np.isnan(s1)],11,9)
-                        snr1s[d*24+c,~np.isnan(s1)]=ss1                        
-                    if sum(~np.isnan(s2))>10:
-                        ss2=signal.savgol_filter(s2[~np.isnan(s2)],11,9)
-                        snr2s[d*24+c,~np.isnan(s2)]=ss2
-                        snr2c[d*24+c,~np.isnan(s2)]=np.interp(h2[~np.isnan(s2),0],h[0,~np.isnan(s2)],ss2);
-                    if sum(~np.isnan(s3))>10:
-                        ss3=signal.savgol_filter(s3[~np.isnan(s3)],11,9) 
-                        snr3s[d*24+c,~np.isnan(s3)]=ss3                   
-                        snr3c[d*24+c,~np.isnan(s3)]=np.interp(h2[~np.isnan(s3),0],h[0,~np.isnan(s3)],ss3);
-                except: 
-                    h[d*24+c,:]=np.nan
-                    windspeed[d*24+c,:]=np.nan  
-                    s1=np.empty((1,ng),dtype=float);s1[:]=np.nan
-                    s2=np.empty((1,ng),dtype=float);s2[:]=np.nan
-                    s3=np.empty((1,ng),dtype=float);s3[:]=np.nan
+    if fname is not None:
+        print('working on file', fname)
+        for hr in hrs:
+            fileH = fname[0:9]+str(hr)+'w'                
+            try:
+                tabday = pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=skp,nrows=ng)
+                h[d*24+c,:]=tabday['HT']
+                h2=h[d*24+c,:]*np.sin(ang*np.pi/180);h2=h2.reshape(-1,1)# Corrected height for the oblique channels
+                windspeed[d*24+c,:]=tabday['SPD'].to_numpy(dtype='float'); windspeed[windspeed==999999]=np.nan                     
+                s1=tabday['SNR'].to_numpy(dtype='float');s1[s1==999999]=np.nan
+                s2=tabday['SNR.1'].to_numpy(dtype='float');s2[s2==999999]=np.nan
+                s3=tabday['SNR.2'].to_numpy(dtype='float');s3[s3==999999]=np.nan
+                # Smoothing and heigth correcting:
+                if sum(~np.isnan(s1))>10:
+                    ss1=signal.savgol_filter(s1[~np.isnan(s1)],11,9)
+                    snr1s[d*24+c,~np.isnan(s1)]=ss1                        
+                if sum(~np.isnan(s2))>10:
+                    ss2=signal.savgol_filter(s2[~np.isnan(s2)],11,9)
+                    snr2s[d*24+c,~np.isnan(s2)]=ss2
+                    snr2c[d*24+c,~np.isnan(s2)]=np.interp(h2[~np.isnan(s2),0],h[0,~np.isnan(s2)],ss2);
+                if sum(~np.isnan(s3))>10:
+                    ss3=signal.savgol_filter(s3[~np.isnan(s3)],11,9) 
+                    snr3s[d*24+c,~np.isnan(s3)]=ss3                   
+                    snr3c[d*24+c,~np.isnan(s3)]=np.interp(h2[~np.isnan(s3),0],h[0,~np.isnan(s3)],ss3);
+            except: 
+                h[d*24+c,:]=np.nan
+                windspeed[d*24+c,:]=np.nan  
+                s1=np.empty((1,ng),dtype=float);s1[:]=np.nan
+                s2=np.empty((1,ng),dtype=float);s2[:]=np.nan
+                s3=np.empty((1,ng),dtype=float);s3[:]=np.nan
                     
-                # Raw series    
-                snr1a[d*24+c,:]=s1
-                snr2a[d*24+c,:]=s2
-                snr3a[d*24+c,:]=s3                 
+            # Raw series    
+            snr1a[d*24+c,:]=s1
+            snr2a[d*24+c,:]=s2
+            snr3a[d*24+c,:]=s3                 
 
   
-                c+=1
+            c+=1
         d+=1
 
      
@@ -187,5 +186,3 @@ snr3[0:-offs]=snr3c[offs-1:-1,:];
 
 np.savez('snr_coarse_new',snr1, snr2, snr3,h,time,)
 np.save('timef',time)
-
-
