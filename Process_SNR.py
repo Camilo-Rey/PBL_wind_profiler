@@ -31,11 +31,11 @@ doy = np.array([date.timetuple().tm_yday for date in plottime])
 hours = [date.hour for date in plottime]
 
 #daysun3=nan(length(doy),1);
-daysun3 = [np.nan for i in doy]
+daysun3 = np.array([np.nan for i in doy])
 
 # shift the time by 5 hour
-# daysun3[0:5] = doy[-5:]
-# daysun3[5:] = doy[0:-5]
+#daysun3[0:5] = doy[-5:]
+daysun3[5:] = doy[0:-5]
 
 SUNSIX = [np.nan for i in doy]
 
@@ -49,12 +49,8 @@ longitude = LLA[0] # degrees - longitude of tower location
 latitude  =  LLA[1] # degrees - latitude of tower location
 altitude  =  LLA[2] # m - altitude of tower location
 
-# UTC_offset=-8;
-# gtG = -(UTC_offset/24); # Time offset to get to Greenwhich
-
 
 from astral import Location
-
 
 site = Location((
         'site',
@@ -85,6 +81,7 @@ daynight = np.array(daynight, dtype=bool)
 day_start = doy[0]
 day_end = doy[-1]
 Ndays = day_end - day_start + 1 
+#Ndays=len(set(doy))
 
 
 ALL = np.full([Ndays*24,3], np.nan)
@@ -94,10 +91,10 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
 
     PBL = np.full(Ndays*24, np.nan)
     
-    for i in range(1,day_end+1):
+    for i in range(day_start,day_end+1):
     
-        S1 = snrT[doy==i]
-        DN = daynight[doy==i]   
+        S1 = snrT[daysun3==i]
+        DN = daynight[daysun3==i]   
         
         pbl24 = np.full(24, fill_value = np.nan)
         negSNR = np.full(24, fill_value = np.nan)
@@ -192,16 +189,11 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
             
         if np.nansum(negSNR)>4:
             pbl24 = np.full(24, fill_value = np.nan)
-        
-        PBL[doy==i] = pbl24
-        
-        # if i == day_end:
-            # PBL(daysun3==i)=pbl24(1:end-5);
-            # SUNSIX(daysun3==i)=ssix(1:end-5);
-        # else
-            # PBL(daysun3==i)=pbl24;
-            # SUNSIX(daysun3==i)=ssix;
-                
+                        
+        if i == day_end:
+            PBL[daysun3==i]=pbl24[:-5]
+        else:
+            PBL[daysun3==i]=pbl24              
         
       
     ALL[:,m]=PBL # Allocate to table with all channels
