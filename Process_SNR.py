@@ -101,6 +101,8 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
         
         sunrix = np.arange(len(DN))[DN==1][0]
         sunsix = np.arange(len(DN))[DN==1][-1]+1
+        ssix= [np.nan for i in range(24)]
+        ssix[sunsix-5:sunsix-1]= [1, 1, 1, 1] ; # A vector of zeros and ones showing late afternoon
         
         offsunr = 2
         offsuns = 2
@@ -192,14 +194,16 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
                         
         if i == day_end:
             PBL[daysun3==i]=pbl24[:-5]
+            SUNSIX[daysun3==i]=ssix[:-5]
         else:
-            PBL[daysun3==i]=pbl24              
+            PBL[daysun3==i]=pbl24      
+            SUNSIX[daysun3==i]=ssix
         
       
     ALL[:,m]=PBL # Allocate to table with all channels
         
     
-PBL_SD = np.nanstd(ALL, axis=0)
+
 
 # Plot the 3 channels and their variability
 plt.figure()
@@ -207,3 +211,59 @@ plt.plot(plottime, ALL[:,0])
 plt.plot(plottime, ALL[:,1])
 plt.plot(plottime, ALL[:,2])
 plt.show()
+
+PBL_cam0=nanmean(ALL,2);# Raw mean of PBL height from the three channels
+
+# Creating a filter based on standard deviation
+PBL_SD = np.nanstd(ALL, axis=0)
+n=sum(~isnan(ALL),2);
+SD_flag=PBL_SD>0.15 | n<2;
+PBL_cam1=PBL_cam0;% First filtered PBL
+PBL_cam1(SD_flag,:)=nan;
+
+# Filtering whole days
+PBL_cam2=PBL_cam1;  
+
+# If a day has high variation, the whole days is bad
+for i=1:365
+    ix=doy_yr==i;    
+    ix2= doy==i & daynight==1;
+    ix3= doy==i & SUNSIX==1;
+    if nansum(isnan(PBL_cam1(ix3)))>=3 : # 3 or more nans during the day make the whole day bad
+        PBL_cam2(ix)=nan(nansum(ix),1);    
+    if nanmax(PBL_cam1(ix2))<0.20 : # if the maximum PBL for the day is less than the 150 m, the whole day is bad
+        PBL_cam2(ix)=nan(nansum(ix),1);
+        
+# Interpolation to 30 and 15 min
+
+hr=(0:23)# huors
+Dhour=(0:0.5:23.5)# desired hour 30 min
+Dhour2=(0:0.25:23.75) # desired hour 15 min
+
+PBL_30min_cam=[];PBL_15min_cam=[];
+YEAR=[];
+daysun_30min=[];
+yy=year; 
+
+for i=day_start:day_end:
+    Hp=PBL_cam2(doy==i);
+    h30min=interp1(hr,Hp,Dhour);
+    PBL_30min_cam=[PBL_30min_cam;h30min];
+    h15min=interp1(hr,Hp,Dhour2);
+    PBL_15min_cam=[PBL_15min_cam;h15min];
+    YEAR=[YEAR,yy];
+
+# Now we need to create a new plottime for 30 mins and one for 15 min and plot
+
+date30min=?
+date15min=?    
+
+figure;plot(date30min,[PBL_30min_cam]);title('Interpolated 30 min')
+ylabel('PBL heigth (km)'); 
+
+save([SaveDir 'PBL_30min'],'PBL_30min_cam','date30min','doy_res')
+
+figure;plot(date15min,[PBL_15min_cam]);title('Interpolated 15 min')
+ylabel('PBL heigth (km)');   
+
+save([SaveDir 'PBL_15min'],'PBL_15min_cam','date15min','doy_res')    
