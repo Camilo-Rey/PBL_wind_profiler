@@ -7,6 +7,8 @@ Created on Mon Mar 30 19:10:40 2020
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import pytz
+from datetime import datetime,timedelta
 
 gg=np.load('snr_coarse_new.npz', allow_pickle=True)
 gg.files
@@ -65,8 +67,8 @@ site = Location((
 daynight = []
 for time in plottime:
     
-    sr = site.sunrise(datetime.datetime(time.year,time.month,time.day))
-    ss = site.sunset(datetime.datetime(time.year,time.month,time.day))
+    sr = site.sunrise(datetime(time.year,time.month,time.day))
+    ss = site.sunset(datetime(time.year,time.month,time.day))
 
     if time>sr and time<ss:
         daynight.append(1)
@@ -194,17 +196,15 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
                         
         if i == day_end:
             PBL[daysun3==i]=pbl24[:-5]
-            SUNSIX[daysun3==i]=ssix[:-5]
+            # SUNSIX[daysun3==i]=ssix[:-5]
         else:
             PBL[daysun3==i]=pbl24      
-            SUNSIX[daysun3==i]=ssix
+            # SUNSIX[daysun3==i]=ssix
         
       
     ALL[:,m]=PBL # Allocate to table with all channels
         
     
-
-
 # Plot the 3 channels and their variability
 plt.figure()
 plt.plot(plottime, ALL[:,0])
@@ -212,58 +212,90 @@ plt.plot(plottime, ALL[:,1])
 plt.plot(plottime, ALL[:,2])
 plt.show()
 
-PBL_cam0=nanmean(ALL,2);# Raw mean of PBL height from the three channels
+
+
+import copy
+
+PBL_cam0 = np.nanmean(ALL, axis=1) # Raw mean of PBL height from the three channels
 
 # Creating a filter based on standard deviation
-PBL_SD = np.nanstd(ALL, axis=0)
-n=sum(~isnan(ALL),2);
-SD_flag=PBL_SD>0.15 | n<2;
-PBL_cam1=PBL_cam0;% First filtered PBL
-PBL_cam1(SD_flag,:)=nan;
+PBL_SD = np.nanstd(ALL, axis=1)
+n = np.nansum(ALL, axis=1)
+SD_flag = np.bitwise_or(PBL_SD>0.15, n<2)
+PBL_cam1=copy.copy(PBL_cam0) # First filtered PBL
+PBL_cam1[SD_flag] = np.nan
+
+
 
 # Filtering whole days
-PBL_cam2=PBL_cam1;  
-
+PBL_cam2 = copy.copy(PBL_cam1)
 # If a day has high variation, the whole days is bad
-for i=1:365
-    ix=doy_yr==i;    
-    ix2= doy==i & daynight==1;
-    ix3= doy==i & SUNSIX==1;
-    if nansum(isnan(PBL_cam1(ix3)))>=3 : # 3 or more nans during the day make the whole day bad
-        PBL_cam2(ix)=nan(nansum(ix),1);    
-    if nanmax(PBL_cam1(ix2))<0.20 : # if the maximum PBL for the day is less than the 150 m, the whole day is bad
-        PBL_cam2(ix)=nan(nansum(ix),1);
+for i in range(day_start,day_end+1):
+    
+    ix = doy==i    
+    ix2 = np.bitwise_and(doy==i, daynight)
+    # ix3 = np.bitwise_and(doy==i, SUNSIX==1)
+    # if nansum(isnan(PBL_cam1(ix3)))>=3 : # 3 or more nans during the day make the whole day bad
+    #     PBL_cam2(ix)=nan(nansum(ix),1);    
+    if np.nanmax(PBL_cam1[ix2]) < 0.20: # if the maximum PBL for the day is less than the 150 m, the whole day is bad
+        PBL_cam2[ix] = np.nan
+        
         
 # Interpolation to 30 and 15 min
 
-hr=(0:23)# huors
-Dhour=(0:0.5:23.5)# desired hour 30 min
-Dhour2=(0:0.25:23.75) # desired hour 15 min
+hrs = np.arange(24) # hours
+Dhour = np.arange(0,24,0.5) # desired hour 30 min
+Dhour2 = np.arange(0,24,0.25) # desired hour 15 min
 
-PBL_30min_cam=[];PBL_15min_cam=[];
-YEAR=[];
-daysun_30min=[];
-yy=year; 
+PBL_30min_cam = []
+PBL_15min_cam = []
+YEAR = []
+daysun_30min = []
+# yy = year 
 
-for i=day_start:day_end:
-    Hp=PBL_cam2(doy==i);
-    h30min=interp1(hr,Hp,Dhour);
-    PBL_30min_cam=[PBL_30min_cam;h30min];
-    h15min=interp1(hr,Hp,Dhour2);
-    PBL_15min_cam=[PBL_15min_cam;h15min];
-    YEAR=[YEAR,yy];
+
+for i in range(day_start,day_end+1):
+    Hp = PBL_cam2[doy==i]
+    
+    h30min = np.interp(Dhour, hrs, Hp)
+    PBL_30min_cam.append(h30min)
+    
+    h15min = np.interp(Dhour2, hrs, Hp)
+    PBL_15min_cam.append(h15min)
+#     YEAR=[YEAR,yy];
+
+PBL_30min_cam = np.array(PBL_30min_cam).reshape(-1)
+PBL_15min_cam = np.array(PBL_15min_cam).reshape(-1)
 
 # Now we need to create a new plottime for 30 mins and one for 15 min and plot
 
-date30min=?
-date15min=?    
+# date30min=?
+# date15min=?    
 
-figure;plot(date30min,[PBL_30min_cam]);title('Interpolated 30 min')
-ylabel('PBL heigth (km)'); 
+date30min = []
+date_0 = datetime(2018,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
+for day in list(set(doy)):
+    date_1 = date_0+timedelta(int(day)-1)
+    
+    for i,t in enumerate(Dhour):
+        date_2 = date_1 + timedelta(0,1800*i)
+        date30min.append(date_2)
 
-save([SaveDir 'PBL_30min'],'PBL_30min_cam','date30min','doy_res')
 
-figure;plot(date15min,[PBL_15min_cam]);title('Interpolated 15 min')
-ylabel('PBL heigth (km)');   
+date15min = []
+date_0 = datetime(2018,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
+for day in list(set(doy)):
+    date_1 = date_0+timedelta(int(day)-1)
+    
+    for i,t in enumerate(Dhour2):
+        date_2 = date_1 + timedelta(0,900*i)
+        date15min.append(date_2)
 
-save([SaveDir 'PBL_15min'],'PBL_15min_cam','date15min','doy_res')    
+plt.figure()
+plt.plot(date15min,PBL_15min_cam)
+plt.show()
+
+plt.figure()
+plt.plot(date30min,PBL_30min_cam)
+plt.show()
+
