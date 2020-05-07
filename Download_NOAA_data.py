@@ -2,11 +2,11 @@
 """
 Created on Wed Jan 29 18:53:23 2020
 
-@author: CamiloRey
+@author: VinnieRibeiro and CamiloRey
 """
 
 # # Download raw data of NOAA wind profiler
-# ## By Camilo Rey and Vinnie Ribeiro
+# ## By Vinnie Ribeiro and Camilo Rey
 # ### Dec 27, 2019
 # #### This code 1) downloads a selected subset of the raw data of the NOAA wind profiler from the NOAA ftp server and stores it in the local machine. 
 
@@ -22,11 +22,10 @@ import time
 
 # Parameters input
 
-year=2017
+year=2018
 yr=str(year)
 
 ndays=365
-ang=66.4 # inclination angle from horizon of non-vertical channels. If alredy corrected, ang=90
 offset=-8 # offset from UTC
 
 
@@ -35,7 +34,7 @@ offset=-8 # offset from UTC
 ftp = ftplib.FTP("ftp1.esrl.noaa.gov")
 ftp.login()
 
-base = '/psd2/data/realtime//Radar915/WwWind/tci/'
+base = '/psd2/data/realtime//Radar915/WwWind/ove/'
 
 def download(folder):
     

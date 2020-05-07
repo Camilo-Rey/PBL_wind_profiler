@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 import pytz
 from datetime import datetime,timedelta
 
-gg=np.load('snr_coarse_new.npz', allow_pickle=True)
+site='twi'
+year=2018
+gg=np.load('snr_coarse_new_twi2018.npz', allow_pickle=True)
 gg.files
 
 snr1=gg['arr_0']
@@ -39,7 +41,7 @@ daysun3 = np.array([np.nan for i in doy])
 #daysun3[0:5] = doy[-5:]
 daysun3[5:] = doy[0:-5]
 
-SUNSIX = [np.nan for i in doy]
+
 
 
 ## Second, we need an array of sunrise and sunset times based on location of instrument
@@ -52,28 +54,42 @@ latitude  =  LLA[1] # degrees - latitude of tower location
 altitude  =  LLA[2] # m - altitude of tower location
 
 
-from astral import Location
+from astral import LocationInfo
 
-site = Location((
-        'site',
-        'US',
-        latitude,
-        longitude,
-        'US/Pacific',
-        altitude
-        ))
+city = LocationInfo("Sacramento", "California", "US", LLA[1], LLA[0])
 
+# =============================================================================
+# site = LocationInfo((
+#         'site',
+#         'US',
+#         latitude,
+#         longitude,
+#         'US/Pacific',
+#         altitude
+#         ))
+# 
+# =============================================================================
+
+
+from astral.sun import sun
 
 daynight = []
 for time in plottime:
     
-    sr = site.sunrise(datetime(time.year,time.month,time.day))
-    ss = site.sunset(datetime(time.year,time.month,time.day))
+# =============================================================================
+#     sr = site.sunrise(datetime(time.year,time.month,time.day))
+#     ss = site.sunset(datetime(time.year,time.month,time.day))
+# =============================================================================
+    
+    s = sun(city.observer, date=datetime(time.year,time.month,time.day))
+    sr = s["sunrise"]
+    ss = s["sunset"]
 
     if time>sr and time<ss:
         daynight.append(1)
     else:
         daynight.append(0)
+
 
 daynight = np.array(daynight, dtype=bool)
 
@@ -85,35 +101,38 @@ day_end = doy[-1]
 Ndays = day_end - day_start + 1 
 #Ndays=len(set(doy))
 
+pbl_init=0.1 # km
 
-ALL = np.full([Ndays*24,3], np.nan)
+allc = np.full([Ndays*24,3], np.nan)
 
 
 for m,snrT in enumerate([snr1, snr2, snr3]):
 
     PBL = np.full(Ndays*24, np.nan)
+    SUNSIX = np.full(Ndays*24, np.nan)
     
     for i in range(day_start,day_end+1):
     
         S1 = snrT[daysun3==i]
-        DN = daynight[daysun3==i]   
+        DN = daynight[daysun3==i]         
         
         pbl24 = np.full(24, fill_value = np.nan)
         negSNR = np.full(24, fill_value = np.nan)
         
-        sunrix = np.arange(len(DN))[DN==1][0]
-        sunsix = np.arange(len(DN))[DN==1][-1]+1
-        ssix= [np.nan for i in range(24)]
-        ssix[sunsix-5:sunsix-1]= [1, 1, 1, 1] ; # A vector of zeros and ones showing late afternoon
+        offsunr = 3
+        offsuns = 4
         
-        offsunr = 2
-        offsuns = 2
+        sunrix = np.arange(len(DN))[DN==1][0] # this is the index
+        sunsix = np.arange(len(DN))[DN==1][-1]+1 # this is the index
+        ssix= np.zeros(24,dtype=int)
+        ssix[sunrix+offsunr:sunsix+1-offsuns]= 1 ; # A vector of zeros and ones showing late afternoon       
+
         
-        pbl = 0.15
+        pbl = pbl_init
         pbl24[0] = pbl
         
         
-        for j,s in enumerate(S1): 
+        for j,s in enumerate(S1):             
             pp = np.sort(s)[::-1]
             ss = np.argsort(s)[::-1]
             
@@ -152,7 +171,7 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
                     
                     
                 ## For mid-afternoon to sunset (decay)
-                night = 0.75   # maximum delta in the night    
+                night = 0.95   # maximum delta in the night    
                 if j >= sunsix-offsuns and j <= sunsix: # If it is nighttime (DN(j)==0) and after the afternoon(j>10)      
         
                     # Note: Is it correct that the index in h[s2[0]] doesnt
@@ -160,22 +179,22 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
                     if abs(h[s2[0]]-pbl) < night and h[s2[0]] <= pbl:
                         pbl = h[s2[0]]  # Choose the maximum SNR within the window
                         
-                    elif abs(h[s2[1]]-pbl) < night and h[s2[0]] <= pbl:
+                    elif abs(h[s2[1]]-pbl) < night and h[s2[1]] <= pbl:
                         pbl = h[s2[1]]  # Else, choose the next maximum    
                         
-                    elif abs(h[s2[2]]-pbl) < night and h[s2[0]] <= pbl:
+                    elif abs(h[s2[2]]-pbl) < night and h[s2[2]] <= pbl:
                         pbl = h[s2[2]]  # Else, choose the next maximum
                         
-                    elif abs(h[s2[3]]-pbl) < night and h[s2[0]] <= pbl:
+                    elif abs(h[s2[3]]-pbl) < night and h[s2[3]] <= pbl:
                         pbl = h[s2[3]]  # Else, choose the next maximum
                         
-                    elif abs(h[s2[4]]-pbl) < night and h[s2[0]] <= pbl:
+                    elif abs(h[s2[4]]-pbl) < night and h[s2[4]] <= pbl:
                         pbl = h[s2[4]]  # Else, choose the next maximum
                         
-                    elif abs(h[s2[5]]-pbl) < night and h[s2[0]] <= pbl:
+                    elif abs(h[s2[5]]-pbl) < night and h[s2[5]] <= pbl:
                         pbl = h[s2[5]]  # Else, choose the next maximum
                         
-                    elif abs(h[s2[6]]-pbl) < night and h[s2[0]] <= pbl:
+                    elif abs(h[s2[6]]-pbl) < night and h[s2[6]] <= pbl:
                         pbl = h[s2[6]]  # Else, choose the next maximum
                     
                 # For nighttime
@@ -196,35 +215,51 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
                         
         if i == day_end:
             PBL[daysun3==i]=pbl24[:-5]
-            # SUNSIX[daysun3==i]=ssix[:-5]
+            SUNSIX[daysun3==i]=ssix[:-5]
         else:
             PBL[daysun3==i]=pbl24      
-            # SUNSIX[daysun3==i]=ssix
+            SUNSIX[daysun3==i]=ssix
         
       
-    ALL[:,m]=PBL # Allocate to table with all channels
+    allc[:,m]=PBL # Allocate to table with all channels
         
     
-# Plot the 3 channels and their variability
-plt.figure()
-plt.plot(plottime, ALL[:,0])
-plt.plot(plottime, ALL[:,1])
-plt.plot(plottime, ALL[:,2])
-plt.show()
-
-
 
 import copy
+all_raw=copy.copy(allc)
 
-PBL_cam0 = np.nanmean(ALL, axis=1) # Raw mean of PBL height from the three channels
+## Filteing channels based on error
+
+dm=np.nanmean(allc, axis=1);
+err1=np.abs(allc[:,0]-dm)/dm;
+ixm1=err1>0.25
+allc[ixm1,0]=np.nan;
+
+err2=np.abs(allc[:,1]-dm)/dm;
+ixm2=err2>0.25
+allc[ixm2,1]=np.nan;
+
+err3=np.abs(allc[:,2]-dm)/dm;
+ixm3=err3>0.25
+allc[ixm3,2]=np.nan;
+
+# Plot the 3 channels 
+plt.figure(figsize=(10,8))
+plt.plot(plottime, allc[:,0])
+plt.plot(plottime, allc[:,1])
+plt.plot(plottime, allc[:,2])
+plt.ylabel('PBL height (Km)')
+plt.legend({'ch_1', 'ch_2','ch_3'})
+plt.title('Raw PBL height as determined by each channel')
+
 
 # Creating a filter based on standard deviation
-PBL_SD = np.nanstd(ALL, axis=1)
-n = np.nansum(ALL, axis=1)
-SD_flag = np.bitwise_or(PBL_SD>0.15, n<2)
+PBL_cam0 = np.nanmean(allc, axis=1) # Raw mean of PBL height from the three channels
+PBL_SD = np.nanstd(allc, axis=1)
+n = np.sum(~np.isnan(allc),axis=1)
+SD_flag = np.bitwise_or(PBL_SD>0.2, n<2)
 PBL_cam1=copy.copy(PBL_cam0) # First filtered PBL
 PBL_cam1[SD_flag] = np.nan
-
 
 
 # Filtering whole days
@@ -234,12 +269,11 @@ for i in range(day_start,day_end+1):
     
     ix = doy==i    
     ix2 = np.bitwise_and(doy==i, daynight)
-    # ix3 = np.bitwise_and(doy==i, SUNSIX==1)
-    # if nansum(isnan(PBL_cam1(ix3)))>=3 : # 3 or more nans during the day make the whole day bad
-    #     PBL_cam2(ix)=nan(nansum(ix),1);    
+    ix3 = np.bitwise_and(doy==i, SUNSIX==1)
+    if sum(np.isnan(PBL_cam1[ix3]))>=3 : # 3 or more nans during the day make the whole day bad
+        PBL_cam2[ix]=np.nan; 
     if np.nanmax(PBL_cam1[ix2]) < 0.20: # if the maximum PBL for the day is less than the 150 m, the whole day is bad
         PBL_cam2[ix] = np.nan
-        
         
 # Interpolation to 30 and 15 min
 
@@ -247,8 +281,8 @@ hrs = np.arange(24) # hours
 Dhour = np.arange(0,24,0.5) # desired hour 30 min
 Dhour2 = np.arange(0,24,0.25) # desired hour 15 min
 
-PBL_30min_cam = []
-PBL_15min_cam = []
+PBL_30min = []
+PBL_15min = []
 YEAR = []
 daysun_30min = []
 # yy = year 
@@ -258,19 +292,16 @@ for i in range(day_start,day_end+1):
     Hp = PBL_cam2[doy==i]
     
     h30min = np.interp(Dhour, hrs, Hp)
-    PBL_30min_cam.append(h30min)
+    PBL_30min.append(h30min)
     
     h15min = np.interp(Dhour2, hrs, Hp)
-    PBL_15min_cam.append(h15min)
+    PBL_15min.append(h15min)
 #     YEAR=[YEAR,yy];
 
-PBL_30min_cam = np.array(PBL_30min_cam).reshape(-1)
-PBL_15min_cam = np.array(PBL_15min_cam).reshape(-1)
+PBL_30min = np.array(PBL_30min).reshape(-1)
+PBL_15min = np.array(PBL_15min).reshape(-1)
 
-# Now we need to create a new plottime for 30 mins and one for 15 min and plot
-
-# date30min=?
-# date15min=?    
+# plottime for 30 mins and one for 15 min and plot
 
 date30min = []
 date_0 = datetime(2018,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
@@ -291,11 +322,14 @@ for day in list(set(doy)):
         date_2 = date_1 + timedelta(0,900*i)
         date15min.append(date_2)
 
-plt.figure()
-plt.plot(date15min,PBL_15min_cam)
-plt.show()
+plt.figure(figsize=(10,8))
+plt.plot(date15min,PBL_15min)
+plt.ylabel('PBL height (Km)')
+plt.title('PBL height interpolated Half-hourly')
 
-plt.figure()
-plt.plot(date30min,PBL_30min_cam)
-plt.show()
+plt.figure(figsize=(10,8))
+plt.plot(date30min,PBL_30min)
+plt.ylabel('PBL height (Km)')
+plt.title('PBL height interpolated to 15-min')
 
+np.savez(f'PBL_heigth_{site}{year}',date30min, PBL_30min)

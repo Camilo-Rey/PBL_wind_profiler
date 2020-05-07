@@ -6,6 +6,8 @@
 # ### Dec 27, 2019
 # #### This code  Selects and process the SNR values for calculation of PBL code in the next code
 
+########## First, Select the directory where the data was downloaded. Do not include the year in the directory ################
+########## Second, adjust angle of oblique channels and offset according to the site #############################################
 
 # Import libraries
 
@@ -19,6 +21,7 @@ import pytz
 
 # Parameters input
 
+site='twi'
 year=2018
 yr=str(year)
 
@@ -42,11 +45,11 @@ maindir=os.path.join(currdir, yr)
 
 ## Preallocate
 
-res=1 # 0 for fine, 1 for coarse
-if res==0:
-    ng=44
-    skp=10
+res=1 # 1 for fine, 2 for coarse
 if res==1:
+    ng=45
+    skp=10
+if res==2:
     ng=62
     skp=66
     
@@ -121,26 +124,31 @@ for fileD in days:
             try:
                 tabday = pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=skp,nrows=ng)
                 h[d*24+c,:]=tabday['HT']
-                h2=h[d*24+c,:]*np.sin(ang*np.pi/180);h2=h2.reshape(-1,1)# Corrected height for the oblique channels
+                h2=h[d*24+c,:]*np.sin(ang*np.pi/180);#h2=h2.reshape(-1,1)# Corrected height for the oblique channels
                 windspeed[d*24+c,:]=tabday['SPD'].to_numpy(dtype='float'); windspeed[windspeed==999999]=np.nan                     
-                s1=tabday['SNR'].to_numpy(dtype='float');s1[s1==999999]=np.nan
-                s2=tabday['SNR.1'].to_numpy(dtype='float');s2[s2==999999]=np.nan
-                s3=tabday['SNR.2'].to_numpy(dtype='float');s3[s3==999999]=np.nan
+                s1o=tabday['SNR'].to_numpy(dtype='float');s1o[s1o==999999]=np.nan
+                s2o=tabday['SNR.1'].to_numpy(dtype='float');s2o[s2o==999999]=np.nan
+                s3o=tabday['SNR.2'].to_numpy(dtype='float');s3o[s3o==999999]=np.nan
+                
+                # Range-correction
+                s1=s1o + 20*np.log10(tabday['HT']*1000);
+                s2=s2o + 20*np.log10(tabday['HT']*1000);
+                s3=s3o + 20*np.log10(tabday['HT']*1000);
+                
                 # Smoothing and heigth correcting:
                 if sum(~np.isnan(s1))>10:
                     ss1=signal.savgol_filter(s1[~np.isnan(s1)],11,9)
                     snr1s[d*24+c,~np.isnan(s1)]=ss1                        
                 if sum(~np.isnan(s2))>10:
-                    ss2=signal.savgol_filter(s2[~np.isnan(s2)],11,9)
-                    snr2s[d*24+c,~np.isnan(s2)]=ss2
-                    snr2c[d*24+c,~np.isnan(s2)]=np.interp(h2[~np.isnan(s2),0],h[0,~np.isnan(s2)],ss2);
+                    ss2=np.interp(tabday['HT'],h2,s2)
+                    snr2c[d*24+c,:]=ss2
+                    snr2s[d*24+c,~np.isnan(ss2)]=signal.savgol_filter(ss2[~np.isnan(ss2)],11,9)
                 if sum(~np.isnan(s3))>10:
-                    ss3=signal.savgol_filter(s3[~np.isnan(s3)],11,9) 
-                    snr3s[d*24+c,~np.isnan(s3)]=ss3                   
-                    snr3c[d*24+c,~np.isnan(s3)]=np.interp(h2[~np.isnan(s3),0],h[0,~np.isnan(s3)],ss3);
+                    ss3=np.interp(tabday['HT'],h2,s3)
+                    snr3c[d*24+c,:]=ss3
+                    snr3s[d*24+c,~np.isnan(ss3)]=signal.savgol_filter(ss3[~np.isnan(ss3)],11,9)
             except: 
-                h[d*24+c,:]=np.nan
-                windspeed[d*24+c,:]=np.nan  
+                h[d*24+c,:]=np.nan                
                 s1=np.empty((1,ng),dtype=float);s1[:]=np.nan
                 s2=np.empty((1,ng),dtype=float);s2[:]=np.nan
                 s3=np.empty((1,ng),dtype=float);s3[:]=np.nan
@@ -180,9 +188,9 @@ snr2=np.empty((Ndays*24,ng),dtype=float);snr2[:]=np.nan
 snr3=np.empty((Ndays*24,ng),dtype=float);snr3[:]=np.nan
 ws=np.empty((Ndays*24,ng),dtype=float);ws[:]=np.nan
 
-snr1[0:-offs]=snr1s[offs-1:-1,:];
-snr2[0:-offs]=snr2c[offs-1:-1,:];
-snr3[0:-offs]=snr3c[offs-1:-1,:];
+snr1[0:-offs-1]=snr1s[offs:-1,:];
+snr2[0:-offs-1]=snr2s[offs:-1,:];
+snr3[0:-offs-1]=snr3s[offs:-1,:];
 
-np.savez('snr_coarse_new',snr1, snr2, snr3,h,time,)
-np.save('timef',time)
+np.savez(f'snr_coarse_new_{site}{year}',snr1, snr2, snr3,h,time,)
+np.save(f'time_{site}{year}',time)
