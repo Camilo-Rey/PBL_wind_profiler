@@ -46,12 +46,12 @@ maindir=os.path.join(currdir, yr)
 ## Preallocate
 
 res=1 # 1 for fine, 2 for coarse
-if res==1:
-    ng=45
-    skp=10
-if res==2:
-    ng=62
-    skp=66
+# if res==1:
+#     ng=45
+#     skp=10
+# if res==2:
+#     ng=62
+#     skp=66
     
 
 Ndays=365
@@ -105,6 +105,43 @@ for day in days:
 
 ## Populate arrays
 
+
+
+def get_ang_ng(filepath):
+    # Function to obtain angle from data
+    # Note: This function assuems a very specific
+    # format in the files 
+
+    with open(filepath) as file:
+        lengs = []
+        for i,row in enumerate(file):
+            lengs.append(len(row))
+            if i==9: # Getting 10th row
+                row10 = list(row.split(" "))
+
+    row10_clean = []
+    for item in row10:
+        if item != '':
+            row10_clean.append(item)
+
+    ang = float(row10_clean[3])
+
+
+    ng_1 = 0
+    while lengs[10+ng_1]==max(lengs) or ng_1>100:
+        ng_1+=1 
+
+    if res==1:
+        ng = ng_1-1
+    else:
+        ng = 0
+        while lengs[20+ng_1+ng]==max(lengs) or ng>100:
+            ng+=1
+        ng -= 1
+
+    return ang, ng
+
+
 d=0
 for fileD in days:
     doy=int(fileD)
@@ -120,7 +157,12 @@ for fileD in days:
     if fname is not None:
         print('working on file', fname)
         for hr in hrs:
-            fileH = fname[0:9]+str(hr)+'w'                
+            fileH = fname[0:9]+str(hr)+'w'
+
+            if d == 0 and c == 0:
+                ang,ng = get_ang_ng(os.path.join(direc, fileH))
+                # print(ang, ng, res)
+            
             try:
                 tabday = pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=skp,nrows=ng)
                 h[d*24+c,:]=tabday['HT']
@@ -131,9 +173,9 @@ for fileD in days:
                 s3o=tabday['SNR.2'].to_numpy(dtype='float');s3o[s3o==999999]=np.nan
                 
                 # Range-correction
-                s1=s1o + 20*np.log10(tabday['HT']*1000);
-                s2=s2o + 20*np.log10(tabday['HT']*1000);
-                s3=s3o + 20*np.log10(tabday['HT']*1000);
+                s1=s1o + 20*np.log10(tabday['HT']*1000)
+                s2=s2o + 20*np.log10(tabday['HT']*1000)
+                s3=s3o + 20*np.log10(tabday['HT']*1000)
                 
                 # Smoothing and heigth correcting:
                 if sum(~np.isnan(s1))>10:
@@ -188,9 +230,9 @@ snr2=np.empty((Ndays*24,ng),dtype=float);snr2[:]=np.nan
 snr3=np.empty((Ndays*24,ng),dtype=float);snr3[:]=np.nan
 ws=np.empty((Ndays*24,ng),dtype=float);ws[:]=np.nan
 
-snr1[0:-offs-1]=snr1s[offs:-1,:];
-snr2[0:-offs-1]=snr2s[offs:-1,:];
-snr3[0:-offs-1]=snr3s[offs:-1,:];
+snr1[0:-offs-1]=snr1s[offs:-1,:]
+snr2[0:-offs-1]=snr2s[offs:-1,:]
+snr3[0:-offs-1]=snr3s[offs:-1,:]
 
 np.savez(f'snr_coarse_new_{site}{year}',snr1, snr2, snr3,h,time,)
 np.save(f'time_{site}{year}',time)

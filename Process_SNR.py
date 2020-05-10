@@ -230,18 +230,18 @@ all_raw=copy.copy(allc)
 
 ## Filteing channels based on error
 
-dm=np.nanmean(allc, axis=1);
-err1=np.abs(allc[:,0]-dm)/dm;
+dm=np.nanmean(allc, axis=1)
+err1=np.abs(allc[:,0]-dm)/dm
 ixm1=err1>0.25
-allc[ixm1,0]=np.nan;
+allc[ixm1,0]=np.nan
 
-err2=np.abs(allc[:,1]-dm)/dm;
+err2=np.abs(allc[:,1]-dm)/dm
 ixm2=err2>0.25
-allc[ixm2,1]=np.nan;
+allc[ixm2,1]=np.nan
 
-err3=np.abs(allc[:,2]-dm)/dm;
+err3=np.abs(allc[:,2]-dm)/dm
 ixm3=err3>0.25
-allc[ixm3,2]=np.nan;
+allc[ixm3,2]=np.nan
 
 # Plot the 3 channels 
 plt.figure(figsize=(10,8))
@@ -332,4 +332,13 @@ plt.plot(date30min,PBL_30min)
 plt.ylabel('PBL height (Km)')
 plt.title('PBL height interpolated to 15-min')
 
+plt.show()
 np.savez(f'PBL_heigth_{site}{year}',date30min, PBL_30min)
+
+# Formatting output
+res = np.empty((len(PBL_30min),2), dtype=object)
+res[:,0] = PBL_30min
+for i,date in enumerate(date30min):
+    res[i,1] = date.isoformat(' ')
+res = pd.DataFrame(res,columns=['PBL_30min', 'date30min'])
+res.to_csv('Results') # Creating CSV output file.
