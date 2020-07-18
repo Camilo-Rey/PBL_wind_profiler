@@ -21,12 +21,9 @@ import time
 
 
 # Parameters input
-
+site='ove'
 year=2018
 yr=str(year)
-
-ndays=365
-offset=-8 # offset from UTC
 
 
 # Dowload data from NOAA and store it in current working directory
@@ -34,7 +31,7 @@ offset=-8 # offset from UTC
 ftp = ftplib.FTP("ftp1.esrl.noaa.gov")
 ftp.login()
 
-base = '/psd2/data/realtime//Radar915/WwWind/ove/'
+base = f'/psd2/data/realtime//Radar915/WwWind/{site}/'
 
 def download(folder):
     

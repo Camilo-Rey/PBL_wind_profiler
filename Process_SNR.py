@@ -6,13 +6,16 @@ Created on Mon Mar 30 19:10:40 2020
 """
 import datetime
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import pytz
 from datetime import datetime,timedelta
 
-site='twi'
+#%% Define inputs
+
+site='tci'
 year=2018
-gg=np.load('snr_coarse_new_twi2018.npz', allow_pickle=True)
+gg=np.load('SNR_fine_tci2018.npz', allow_pickle=True)
 gg.files
 
 snr1=gg['arr_0']
@@ -22,10 +25,7 @@ h=gg['arr_3']
 plottime=gg['arr_4']
 
 
-##=======================================================
-### From this point is all Matlab code that needs to be translated
-#
-## First I need to create an array with the day of year extracting it from plottime
+#%% First, create an array with the day of year extracting it from plottime
 
 
 # days go from 1 to 365
@@ -38,11 +38,7 @@ hours = [date.hour for date in plottime]
 daysun3 = np.array([np.nan for i in doy])
 
 # shift the time by 5 hour
-#daysun3[0:5] = doy[-5:]
 daysun3[5:] = doy[0:-5]
-
-
-
 
 ## Second, we need an array of sunrise and sunset times based on location of instrument
 #
@@ -58,28 +54,12 @@ from astral import LocationInfo
 
 city = LocationInfo("Sacramento", "California", "US", LLA[1], LLA[0])
 
-# =============================================================================
-# site = LocationInfo((
-#         'site',
-#         'US',
-#         latitude,
-#         longitude,
-#         'US/Pacific',
-#         altitude
-#         ))
-# 
-# =============================================================================
-
 
 from astral.sun import sun
 
 daynight = []
 for time in plottime:
     
-# =============================================================================
-#     sr = site.sunrise(datetime(time.year,time.month,time.day))
-#     ss = site.sunset(datetime(time.year,time.month,time.day))
-# =============================================================================
     
     s = sun(city.observer, date=datetime(time.year,time.month,time.day))
     sr = s["sunrise"]
@@ -94,7 +74,7 @@ for time in plottime:
 daynight = np.array(daynight, dtype=bool)
 
 # #=========================================================================
-# ## Ready to loop through channels, then through days (in this case daysun3)
+#%% Ready to loop through channels, then through days (in this case daysun3)
 
 day_start = doy[0]
 day_end = doy[-1]
@@ -223,7 +203,8 @@ for m,snrT in enumerate([snr1, snr2, snr3]):
       
     allc[:,m]=PBL # Allocate to table with all channels
         
-    
+
+#%% Cleaning and filtering    
 
 import copy
 all_raw=copy.copy(allc)
@@ -275,7 +256,7 @@ for i in range(day_start,day_end+1):
     if np.nanmax(PBL_cam1[ix2]) < 0.20: # if the maximum PBL for the day is less than the 150 m, the whole day is bad
         PBL_cam2[ix] = np.nan
         
-# Interpolation to 30 and 15 min
+#%% Interpolation to 30 and 15 min
 
 hrs = np.arange(24) # hours
 Dhour = np.arange(0,24,0.5) # desired hour 30 min
@@ -322,6 +303,8 @@ for day in list(set(doy)):
         date_2 = date_1 + timedelta(0,900*i)
         date15min.append(date_2)
 
+#%% Plot and output
+
 plt.figure(figsize=(10,8))
 plt.plot(date15min,PBL_15min)
 plt.ylabel('PBL height (Km)')
@@ -340,5 +323,5 @@ res = np.empty((len(PBL_30min),2), dtype=object)
 res[:,0] = PBL_30min
 for i,date in enumerate(date30min):
     res[i,1] = date.isoformat(' ')
-res = pd.DataFrame(res,columns=['PBL_30min', 'date30min'])
-res.to_csv('Results') # Creating CSV output file.
+res = pd.DataFrame(res,columns=['date30min','PBL_30min'])
+res.to_csv(f'PBL_Results_{site}_{year}.csv') # Creating CSV output file.

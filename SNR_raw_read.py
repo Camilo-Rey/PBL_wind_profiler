@@ -25,12 +25,16 @@ site='twi'
 year=2018
 yr=str(year)
 
-ang=66.4 # inclination angle from horizon of non-vertical channels. If alredy corrected, ang=90
-offset=-8 # offset from UTC
+offset=-8;# Selecet UTC offset
+Ndays=365
+
+# ang=66.4 # inclination angle from horizon of non-vertical channels. If alredy corrected, ang=90
+# offset=-8 # offset from UTC
 
 ## Where is the data?
 
 currdir=os.getcwd() # or other directory where data is located 
+currdir='D:\PBL\Raw'
 maindir=os.path.join(currdir, yr)
 
 
@@ -46,67 +50,17 @@ maindir=os.path.join(currdir, yr)
 ## Preallocate
 
 res=1 # 1 for fine, 2 for coarse
-# if res==1:
-#     ng=45
-#     skp=10
-# if res==2:
-#     ng=62
-#     skp=66
+if res==1:
+    ng=45# Initial estimate. To be calculated later
+    skp=10
+    resT="fine"
+if res==2:
+    ng=62
+    skp=66
+    resT="coarse"
+
+#%% Function to find angle and number of gates (ng) from dataset
     
-
-Ndays=365
-
-h=np.empty((Ndays*24,ng),dtype=float);h[:]=np.nan
-windspeed=np.empty((Ndays*24,ng),dtype=float);windspeed[:]=np.nan
-
-
-snr1a=np.empty((Ndays*24,ng),dtype=float);snr1a[:]=np.nan
-snr2a=np.empty((Ndays*24,ng),dtype=float);snr2a[:]=np.nan
-snr3a=np.empty((Ndays*24,ng),dtype=float);snr3a[:]=np.nan
-
-snr1s=np.empty((Ndays*24,ng),dtype=float);snr1s[:]=np.nan
-snr2s=np.empty((Ndays*24,ng),dtype=float);snr2s[:]=np.nan
-snr3s=np.empty((Ndays*24,ng),dtype=float);snr3s[:]=np.nan
-
-snr2c=np.empty((Ndays*24,ng),dtype=float);snr2c[:]=np.nan
-snr3c=np.empty((Ndays*24,ng),dtype=float);snr3c[:]=np.nan   
-
-## Create time vector
-
-# days in a year
-days = []
-for i in  np.arange(1,366):
-    if len(str(i))==1:
-        days.append('00'+str(i))
-    elif len(str(i))==2:
-        days.append('0'+str(i))
-    else:
-        days.append(str(i))
-
-# hours in a day
-hrs = []
-for i in  np.arange(24):
-    if len(str(i))==1:
-        hrs.append('0'+str(i))
-    else:
-        hrs.append(str(i))  
-        
-# Populate time        
-from datetime import datetime,timedelta
-
-time=[]
-date_0 = datetime(2018,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
-for day in days:
-    date_1 = date_0+timedelta(int(day)-1)
-    
-    for hr in hrs:
-        date_2 = date_1 + timedelta(0,3600*int(hr))
-        time.append(date_2)
-
-## Populate arrays
-
-
-
 def get_ang_ng(filepath):
     # Function to obtain angle from data
     # Note: This function assuems a very specific
@@ -141,6 +95,62 @@ def get_ang_ng(filepath):
 
     return ang, ng
 
+#%% Create arrays
+
+firstday=os.path.join(maindir, os.listdir(maindir)[0])
+ang,ng = get_ang_ng(os.path.join(firstday, os.listdir(firstday)[0]))
+print(ang, ng, res)
+h=np.empty((Ndays*24,ng),dtype=float);h[:]=np.nan
+        
+windspeed=np.empty((Ndays*24,ng),dtype=float);windspeed[:]=np.nan
+        
+snr1a=np.empty((Ndays*24,ng),dtype=float);snr1a[:]=np.nan
+snr2a=np.empty((Ndays*24,ng),dtype=float);snr2a[:]=np.nan
+snr3a=np.empty((Ndays*24,ng),dtype=float);snr3a[:]=np.nan
+
+snr1s=np.empty((Ndays*24,ng),dtype=float);snr1s[:]=np.nan
+snr2s=np.empty((Ndays*24,ng),dtype=float);snr2s[:]=np.nan
+snr3s=np.empty((Ndays*24,ng),dtype=float);snr3s[:]=np.nan
+
+snr2c=np.empty((Ndays*24,ng),dtype=float);snr2c[:]=np.nan
+snr3c=np.empty((Ndays*24,ng),dtype=float);snr3c[:]=np.nan      
+
+#%% Create time vector
+
+# days in a year
+days = []
+for i in  np.arange(1,366):
+    if len(str(i))==1:
+        days.append('00'+str(i))
+    elif len(str(i))==2:
+        days.append('0'+str(i))
+    else:
+        days.append(str(i))
+
+# hours in a day
+hrs = []
+for i in  np.arange(24):
+    if len(str(i))==1:
+        hrs.append('0'+str(i))
+    else:
+        hrs.append(str(i))  
+        
+#%% Populate time
+        
+from datetime import datetime,timedelta
+
+time=[]
+date_0 = datetime(year,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
+
+for day in days:
+    date_1 = date_0+timedelta(int(day)-1)
+    
+    for hr in hrs:
+        date_2 = date_1 + timedelta(0,3600*int(hr))
+        time.append(date_2)
+
+#%% Populate arrays
+
 
 d=0
 for fileD in days:
@@ -153,16 +163,12 @@ for fileD in days:
         fname = os.listdir(direc)[0]
     except:
         fname = None
-            
+        
     if fname is not None:
         print('working on file', fname)
         for hr in hrs:
-            fileH = fname[0:9]+str(hr)+'w'
-
-            if d == 0 and c == 0:
-                ang,ng = get_ang_ng(os.path.join(direc, fileH))
-                # print(ang, ng, res)
-            
+            fileH = fname[0:9]+str(hr)+'w'               
+          
             try:
                 tabday = pd.read_csv(os.path.join(direc, fileH),sep='\s+',skiprows=skp,nrows=ng)
                 h[d*24+c,:]=tabday['HT']
@@ -202,7 +208,7 @@ for fileD in days:
 
   
             c+=1
-        d+=1
+    d+=1
 
      
 
@@ -234,5 +240,5 @@ snr1[0:-offs-1]=snr1s[offs:-1,:]
 snr2[0:-offs-1]=snr2s[offs:-1,:]
 snr3[0:-offs-1]=snr3s[offs:-1,:]
 
-np.savez(f'snr_coarse_new_{site}{year}',snr1, snr2, snr3,h,time,)
-np.save(f'time_{site}{year}',time)
+np.savez(f'SNR_{resT}_{site}{year}',snr1, snr2, snr3,h,time,)
+
