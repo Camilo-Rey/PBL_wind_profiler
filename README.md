@@ -22,3 +22,14 @@ HOW TO USE
 3) Use Process_SNR.py to process the SNR values from the previous step and calculate PBL height.
 	Modify year of interest.
 	Modify name of .npz dataset generated in previous step if necessary.
+
+The process was done in Spyder 4.0.1 and Python 3.7.1 64-bit | Qt 5.9.6 | PyQt5 5.9.2 | Windows 10
+
+Packages and functions needed to run this code include:
+
+numpy 1.18.1
+pandas  0.25.3
+matplotlib 3.1.1
+pytz 2019.3
+
+To replicate the full environment see accompanying file environment.yml
