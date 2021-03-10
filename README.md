@@ -1,6 +1,8 @@
 # PBL_wind_profiler
 By Camilo Rey-Sanchez and Vinnie Ribeiro
 
+https://zenodo.org/badge/DOI/10.5281/zenodo.4009816.svg
+
 Download, read, and process raw data from NOAA wind profiler to calculate hourly or half-hourly planetary boundary layer height (PBL) also known as atmospheric boundary layer (ABL). 
 
 SUMMARY

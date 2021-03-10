@@ -21,12 +21,12 @@ import pytz
 
 # Parameters input
 
-site='twi'
-year=2018
+site='tci'
+year=2020
 yr=str(year)
 
 offset=-8;# Selecet UTC offset
-Ndays=365
+Ndays=366
 
 # ang=66.4 # inclination angle from horizon of non-vertical channels. If alredy corrected, ang=90
 # offset=-8 # offset from UTC
@@ -119,7 +119,7 @@ snr3c=np.empty((Ndays*24,ng),dtype=float);snr3c[:]=np.nan
 
 # days in a year
 days = []
-for i in  np.arange(1,366):
+for i in  np.arange(1,Ndays+1):
     if len(str(i))==1:
         days.append('00'+str(i))
     elif len(str(i))==2:

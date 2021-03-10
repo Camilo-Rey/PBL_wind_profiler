@@ -21,8 +21,8 @@ import time
 
 
 # Parameters input
-site='ove'
-year=2018
+site='tci'
+year=2020
 yr=str(year)
 
 
@@ -69,4 +69,4 @@ for path0 in ftp.nlst(path):
     currdir=os.getcwd()
 
 t_final = time.time()
-print(f'Time without skipping already downloaded files (2017): {t_final-t_init}')
+print(f'Time without skipping already downloaded files : {t_final-t_init}')

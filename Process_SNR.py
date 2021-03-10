@@ -285,7 +285,7 @@ PBL_15min = np.array(PBL_15min).reshape(-1)
 # plottime for 30 mins and one for 15 min and plot
 
 date30min = []
-date_0 = datetime(2018,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
+date_0 = datetime(year,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
 for day in list(set(doy)):
     date_1 = date_0+timedelta(int(day)-1)
     
@@ -295,7 +295,7 @@ for day in list(set(doy)):
 
 
 date15min = []
-date_0 = datetime(2018,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
+date_0 = datetime(year,1,1,0,0,tzinfo=pytz.timezone('US/Pacific'))
 for day in list(set(doy)):
     date_1 = date_0+timedelta(int(day)-1)
     
@@ -319,9 +319,19 @@ plt.show()
 np.savez(f'PBL_heigth_{site}{year}',date30min, PBL_30min)
 
 # Formatting output
-res = np.empty((len(PBL_30min),2), dtype=object)
-res[:,0] = PBL_30min
+res = np.empty((len(PBL_30min),6), dtype=object)
+
 for i,date in enumerate(date30min):
-    res[i,1] = date.isoformat(' ')
-res = pd.DataFrame(res,columns=['date30min','PBL_30min'])
-res.to_csv(f'PBL_Results_{site}_{year}.csv') # Creating CSV output file.
+    #res[i,0] = date.strftime("%d-%b-%Y %H:%M")
+    res[i,0]=  date.year
+    res[i,1]=  date.month
+    res[i,2]=  date.day
+    res[i,3]=  date.hour
+    res[i,4]=  date.minute     
+    
+    
+res[:,5] = PBL_30min
+   
+res = pd.DataFrame(res,columns=['year','month','day','hour','minute','PBL_30min'])
+res.to_csv(f'PBL_Results_{site}_{year}.csv',index=False) # Creating CSV output file.
+
